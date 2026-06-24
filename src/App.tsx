@@ -5,6 +5,8 @@ import { useThemeStore } from './stores/themeStore'
 import GlobalConfirmModal from './components/common/GlobalConfirmModal'
 import ErrorBoundary from './components/ErrorBoundary'
 import { Toaster } from 'react-hot-toast'
+import GuestGuard from './components/guards/GuestGuard'
+import RoleGuard from './components/guards/RoleGuard'
 
 // Lazy-loaded components for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -59,57 +61,31 @@ function App() {
         }} />
         <Suspense fallback={<PageLoader />}>
           <Routes>
-          {/* Public routes */}
-          <Route path="/register" element={
-            isAuthenticated ? (
-              <Navigate to={['admin', 'mentor'].includes(user?.role || '') ? '/admin' : '/dashboard'} replace />
-            ) : (
-              <RegisterPage />
-            )
-          } />
-          <Route path="/login" element={
-            isAuthenticated ? (
-              <Navigate to={['admin', 'mentor'].includes(user?.role || '') ? '/admin' : '/dashboard'} replace />
-            ) : (
-              <LoginPage />
-            )
-          } />
+            {/* Public routes (Guest Only) */}
+            <Route element={<GuestGuard />}>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+            </Route>
 
-          {/* Admin & Mentor routes */}
-          <Route path="/admin/*" element={
-            isAuthenticated && (user?.role === 'admin' || user?.role === 'mentor') ? (
-              <AdminDashboard />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          } />
+            {/* Admin & Mentor routes */}
+            <Route element={<RoleGuard allowedRoles={['admin', 'mentor']} />}>
+              <Route path="/admin/*" element={<AdminDashboard />} />
+            </Route>
 
-          {/* Student routes */}
-          <Route element={
-              isAuthenticated && user?.role === 'student' ? (
-                <StudentLayout />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-          }>
-            <Route path="/dashboard" element={<StudentDashboard />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/quiz" element={<StudentQuiz />} />
-          </Route>
+            {/* Student routes */}
+            <Route element={<RoleGuard allowedRoles={['student']} />}>
+              <Route element={<StudentLayout />}>
+                <Route path="/dashboard" element={<StudentDashboard />} />
+                <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/quiz" element={<StudentQuiz />} />
+              </Route>
+            </Route>
 
-          {/* Landing page for unauthenticated users */}
-          <Route path="/" element={
-            isAuthenticated ? (
-              <Navigate to={['admin', 'mentor'].includes(user?.role || '') ? '/admin' : '/dashboard'} replace />
-            ) : (
-              <LandingPage />
-            )
-          } />
-          
-          {/* 404 Page */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+            {/* 404 Page */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
         </Suspense>
       </div>
     </ErrorBoundary>

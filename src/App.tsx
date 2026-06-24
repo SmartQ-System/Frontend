@@ -6,7 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { Toaster } from 'react-hot-toast'
 import GuestGuard from './components/guards/GuestGuard'
 import RoleGuard from './components/guards/RoleGuard'
-import { OverlayScrollbars } from 'overlayscrollbars'
+import { useOverlayScrollbars } from 'overlayscrollbars-react'
 
 // Lazy-loaded components for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -45,22 +45,24 @@ function App() {
     }
   }, [theme])
 
-  // Initialize OverlayScrollbars globally on the body
-  useEffect(() => {
-    OverlayScrollbars(
-      { 
-        target: document.body, 
-        cancel: { nativeScrollbarsOverlaid: true } 
-      }, 
-      {
-        scrollbars: {
-          theme: 'os-theme-smartq',
-          autoHide: 'scroll',
-          autoHideDelay: 1000
-        }
+  // Initialize OverlayScrollbars using the React hook
+  const [initBodyScrollbar] = useOverlayScrollbars({
+    options: {
+      scrollbars: {
+        theme: 'os-theme-smartq',
+        autoHide: 'scroll',
+        autoHideDelay: 1000
       }
-    );
-  }, [])
+    },
+    defer: true
+  })
+
+  useEffect(() => {
+    initBodyScrollbar({
+      target: document.body,
+      cancel: { nativeScrollbarsOverlaid: true }
+    });
+  }, [initBodyScrollbar])
 
   return (
     <ErrorBoundary>

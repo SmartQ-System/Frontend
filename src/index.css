@@ -11,6 +11,10 @@ html, body, #root {
   padding: 0;
 }
 
+html, body {
+  overflow: hidden !important;
+}
+
 /* ============================== */
 /* Theme CSS Variables            */
 /* ============================== */

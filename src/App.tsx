@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuthStore } from './stores/authStore'
+import { Routes, Route } from 'react-router-dom'
 import { useThemeStore } from './stores/themeStore'
 import GlobalConfirmModal from './components/common/GlobalConfirmModal'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -35,7 +34,6 @@ function PageLoader() {
 import { useServiceWorker } from './hooks/useServiceWorker'
 
 function App() {
-  const { isAuthenticated, user } = useAuthStore()
   const { theme } = useThemeStore()
   useServiceWorker()
 

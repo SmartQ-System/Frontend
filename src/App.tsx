@@ -31,11 +31,8 @@ function PageLoader() {
   )
 }
 
-import { useServiceWorker } from './hooks/useServiceWorker'
-
 function App() {
   const { theme } = useThemeStore()
-  useServiceWorker()
 
   // Ensure theme is applied on mount
   useEffect(() => {

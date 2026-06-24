@@ -49,16 +49,16 @@ function App() {
     <ErrorBoundary>
       <OverlayScrollbarsComponent 
         className="h-full w-full"
+        dir="ltr"
         options={{ 
           scrollbars: { 
             theme: 'os-theme-smartq', 
-            autoHide: 'scroll', 
-            autoHideDelay: 1000 
+            autoHide: 'never'
           } 
         }}
         defer
       >
-        <div className="min-h-screen">
+        <div className="min-h-screen" dir="rtl">
           <GlobalConfirmModal />
           <Toaster position="top-center" toastOptions={{
             style: {

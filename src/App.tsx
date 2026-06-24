@@ -6,7 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { Toaster } from 'react-hot-toast'
 import GuestGuard from './components/guards/GuestGuard'
 import RoleGuard from './components/guards/RoleGuard'
-import { useOverlayScrollbars } from 'overlayscrollbars-react'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 
 // Lazy-loaded components for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -45,64 +45,57 @@ function App() {
     }
   }, [theme])
 
-  // Initialize OverlayScrollbars using the React hook
-  const [initBodyScrollbar] = useOverlayScrollbars({
-    options: {
-      scrollbars: {
-        theme: 'os-theme-smartq',
-        autoHide: 'scroll',
-        autoHideDelay: 1000
-      }
-    },
-    defer: true
-  })
-
-  useEffect(() => {
-    initBodyScrollbar({
-      target: document.body,
-      cancel: { nativeScrollbarsOverlaid: true }
-    });
-  }, [initBodyScrollbar])
-
   return (
     <ErrorBoundary>
-      <div className="min-h-screen">
-        <GlobalConfirmModal />
-        <Toaster position="top-center" toastOptions={{
-          style: {
-            background: theme === 'dark' ? '#333' : '#fff',
-            color: theme === 'dark' ? '#fff' : '#333',
-          },
-        }} />
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            {/* Public routes (Guest Only) */}
-            <Route element={<GuestGuard />}>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-            </Route>
-
-            {/* Admin & Mentor routes */}
-            <Route element={<RoleGuard allowedRoles={['admin', 'mentor']} />}>
-              <Route path="/admin/*" element={<AdminDashboard />} />
-            </Route>
-
-            {/* Student routes */}
-            <Route element={<RoleGuard allowedRoles={['student']} />}>
-              <Route element={<StudentLayout />}>
-                <Route path="/dashboard" element={<StudentDashboard />} />
-                <Route path="/leaderboard" element={<Leaderboard />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/quiz" element={<StudentQuiz />} />
+      <OverlayScrollbarsComponent 
+        className="h-full w-full"
+        options={{ 
+          scrollbars: { 
+            theme: 'os-theme-smartq', 
+            autoHide: 'scroll', 
+            autoHideDelay: 1000 
+          } 
+        }}
+        defer
+      >
+        <div className="min-h-screen">
+          <GlobalConfirmModal />
+          <Toaster position="top-center" toastOptions={{
+            style: {
+              background: theme === 'dark' ? '#333' : '#fff',
+              color: theme === 'dark' ? '#fff' : '#333',
+            },
+          }} />
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Public routes (Guest Only) */}
+              <Route element={<GuestGuard />}>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
               </Route>
-            </Route>
 
-            {/* 404 Page */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Suspense>
-      </div>
+              {/* Admin & Mentor routes */}
+              <Route element={<RoleGuard allowedRoles={['admin', 'mentor']} />}>
+                <Route path="/admin/*" element={<AdminDashboard />} />
+              </Route>
+
+              {/* Student routes */}
+              <Route element={<RoleGuard allowedRoles={['student']} />}>
+                <Route element={<StudentLayout />}>
+                  <Route path="/dashboard" element={<StudentDashboard />} />
+                  <Route path="/leaderboard" element={<Leaderboard />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/quiz" element={<StudentQuiz />} />
+                </Route>
+              </Route>
+
+              {/* 404 Page */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Suspense>
+        </div>
+      </OverlayScrollbarsComponent>
     </ErrorBoundary>
   )
 }

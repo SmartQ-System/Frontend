@@ -5,6 +5,8 @@ import { FiPlus, FiTrash2, FiEdit2, FiList, FiBook } from 'react-icons/fi'
 import { toast } from 'react-hot-toast'
 import { useUiStore } from '../../stores/uiStore'
 import { Link } from 'react-router-dom'
+import { Formik, Form, Field, ErrorMessage } from 'formik'
+import * as Yup from 'yup'
 
 interface Playlist {
   id: number
@@ -14,6 +16,11 @@ interface Playlist {
   createdAt: string
 }
 
+const playlistSchema = Yup.object().shape({
+  title: Yup.string().required('عنوان القائمة مطلوب'),
+  description: Yup.string().nullable(),
+});
+
 export default function PlaylistsPage() {
   const { theme } = useThemeStore()
   const isDark = theme === 'dark'
@@ -21,11 +28,6 @@ export default function PlaylistsPage() {
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null)
-  
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-  })
   
   const { openConfirm } = useUiStore()
 
@@ -49,37 +51,10 @@ export default function PlaylistsPage() {
   const handleOpenModal = (playlist?: Playlist) => {
     if (playlist) {
       setEditingPlaylist(playlist)
-      setFormData({
-        title: playlist.title,
-        description: playlist.description || '',
-      })
     } else {
       setEditingPlaylist(null)
-      setFormData({
-        title: '',
-        description: '',
-      })
     }
     setIsModalOpen(true)
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    try {
-      if (editingPlaylist) {
-        await playlistsApi.update(editingPlaylist.id, formData)
-        toast.success('تم تحديث القائمة بنجاح')
-      } else {
-        await playlistsApi.create(formData)
-        toast.success('تم إنشاء القائمة بنجاح')
-      }
-      setIsModalOpen(false)
-      loadData()
-    } catch (error) {
-      console.error('Error saving playlist:', error)
-      toast.error('حدث خطأ أثناء الحفظ')
-    }
   }
 
   const handleDelete = (playlist: Playlist) => {
@@ -179,45 +154,76 @@ export default function PlaylistsPage() {
               {editingPlaylist ? 'تعديل القائمة' : 'قائمة جديدة'}
             </h2>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-theme-muted text-sm mb-2">عنوان القائمة</label>
-                <input 
-                  type="text"
-                  required
-                  value={formData.title}
-                  onChange={e => setFormData({...formData, title: e.target.value})}
-                  className="input-field"
-                  placeholder="مثال: أسئلة الوحدة الأولى"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-theme-muted text-sm mb-2">الوصف</label>
-                <textarea 
-                  value={formData.description}
-                  onChange={e => setFormData({...formData, description: e.target.value})}
-                  className="input-field h-24 resize-none"
-                  placeholder="وصف مختصر لمحتوى القائمة..."
-                />
-              </div>
+            <Formik
+              initialValues={{
+                title: editingPlaylist?.title || '',
+                description: editingPlaylist?.description || ''
+              }}
+              validationSchema={playlistSchema}
+              enableReinitialize
+              onSubmit={async (values, { setSubmitting }) => {
+                try {
+                  if (editingPlaylist) {
+                    await playlistsApi.update(editingPlaylist.id, values)
+                    toast.success('تم تحديث القائمة بنجاح')
+                  } else {
+                    await playlistsApi.create(values)
+                    toast.success('تم إنشاء القائمة بنجاح')
+                  }
+                  setIsModalOpen(false)
+                  loadData()
+                } catch (error) {
+                  console.error('Error saving playlist:', error)
+                  toast.error('حدث خطأ أثناء الحفظ')
+                } finally {
+                  setSubmitting(false)
+                }
+              }}
+            >
+              {({ isSubmitting }) => (
+                <Form className="space-y-4">
+                  <div>
+                    <label className="block text-theme-muted text-sm mb-2">عنوان القائمة</label>
+                    <Field 
+                      name="title"
+                      type="text"
+                      className="input-field"
+                      placeholder="مثال: أسئلة الوحدة الأولى"
+                    />
+                    <ErrorMessage name="title" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-theme-muted text-sm mb-2">الوصف</label>
+                    <Field 
+                      name="description"
+                      as="textarea"
+                      className="input-field h-24 resize-none"
+                      placeholder="وصف مختصر لمحتوى القائمة..."
+                    />
+                    <ErrorMessage name="description" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="btn-secondary flex-1"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary flex-1"
-                >
-                  حفظ
-                </button>
-              </div>
-            </form>
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(false)}
+                      disabled={isSubmitting}
+                      className="btn-secondary flex-1"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="btn-primary flex-1"
+                    >
+                      حفظ
+                    </button>
+                  </div>
+                </Form>
+              )}
+            </Formik>
           </div>
         </div>
       )}

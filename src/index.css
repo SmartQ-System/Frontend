@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@import 'overlayscrollbars/overlayscrollbars.css';
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 /* ============================== */
 /* Theme CSS Variables            */
 /* ============================== */
@@ -333,4 +342,24 @@
   body::before, body::after {
     display: none !important;
   }
+}
+
+/* ============================== */
+/* OverlayScrollbars Custom Theme */
+/* ============================== */
+.os-theme-smartq {
+  --os-size: 8px;
+  --os-padding-perpendicular: 0;
+  --os-padding-axis: 0;
+  --os-track-border-radius: 10px;
+  --os-handle-border-radius: 10px;
+  --os-handle-bg: var(--text-muted);
+  --os-handle-bg-hover: var(--primary);
+  --os-handle-bg-active: var(--primary);
+}
+
+[data-theme="dark"] .os-theme-smartq {
+  --os-handle-bg: rgba(255, 255, 255, 0.2);
+  --os-handle-bg-hover: var(--primary);
+  --os-handle-bg-active: var(--primary);
 }

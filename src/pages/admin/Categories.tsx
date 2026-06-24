@@ -4,6 +4,8 @@ import { useTableHeight } from '../../hooks/useTableHeight'
 import { useUiStore } from '../../stores/uiStore'
 import { useThemeStore } from '../../stores/themeStore'
 import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi'
+import { Formik, Form, Field, ErrorMessage } from 'formik'
+import * as Yup from 'yup'
 
 interface Category {
   id: number
@@ -12,6 +14,11 @@ interface Category {
   questionCount: number
 }
 
+const categorySchema = Yup.object().shape({
+  name: Yup.string().required('اسم التصنيف مطلوب'),
+  description: Yup.string().nullable(),
+});
+
 export default function CategoriesPage() {
   const { theme } = useThemeStore()
   const isDark = theme === 'dark'
@@ -19,7 +26,6 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
-  const [formData, setFormData] = useState({ name: '', description: '' })
 
   // Dynamic pagination
   // Estimate card height ~180px, multiplying by 3 for max grid columns
@@ -47,21 +53,6 @@ export default function CategoriesPage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      if (editingCategory) {
-        await categoriesApi.update(editingCategory.id, formData)
-      } else {
-        await categoriesApi.create(formData)
-      }
-      loadCategories()
-      closeModal()
-    } catch (error) {
-      console.error('Error saving category:', error)
-    }
-  }
-
   const { openConfirm } = useUiStore()
 
   const handleDelete = async (id: number) => {
@@ -84,10 +75,8 @@ export default function CategoriesPage() {
   const openModal = (category?: Category) => {
     if (category) {
       setEditingCategory(category)
-      setFormData({ name: category.name, description: category.description || '' })
     } else {
       setEditingCategory(null)
-      setFormData({ name: '', description: '' })
     }
     setShowModal(true)
   }
@@ -95,7 +84,6 @@ export default function CategoriesPage() {
   const closeModal = () => {
     setShowModal(false)
     setEditingCategory(null)
-    setFormData({ name: '', description: '' })
   }
 
   return (
@@ -193,34 +181,60 @@ export default function CategoriesPage() {
             <h2 className="text-xl font-bold text-theme-main mb-6">
               {editingCategory ? 'تعديل التصنيف' : 'تصنيف جديد'}
             </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-theme-muted text-sm mb-2">اسم التصنيف</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="input-field"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-theme-muted text-sm mb-2">الوصف (اختياري)</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="input-field resize-none h-24"
-                />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button type="submit" className="btn-primary flex-1">
-                  {editingCategory ? 'حفظ التغييرات' : 'إضافة'}
-                </button>
-                <button type="button" onClick={closeModal} className="btn-secondary flex-1">
-                  إلغاء
-                </button>
-              </div>
-            </form>
+            <Formik
+              initialValues={{ 
+                name: editingCategory?.name || '', 
+                description: editingCategory?.description || '' 
+              }}
+              validationSchema={categorySchema}
+              enableReinitialize
+              onSubmit={async (values, { setSubmitting }) => {
+                try {
+                  if (editingCategory) {
+                    await categoriesApi.update(editingCategory.id, values)
+                  } else {
+                    await categoriesApi.create(values)
+                  }
+                  loadCategories()
+                  closeModal()
+                } catch (error) {
+                  console.error('Error saving category:', error)
+                } finally {
+                  setSubmitting(false)
+                }
+              }}
+            >
+              {({ isSubmitting }) => (
+                <Form className="space-y-4">
+                  <div>
+                    <label className="block text-theme-muted text-sm mb-2">اسم التصنيف</label>
+                    <Field
+                      name="name"
+                      type="text"
+                      className="input-field"
+                    />
+                    <ErrorMessage name="name" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
+                  <div>
+                    <label className="block text-theme-muted text-sm mb-2">الوصف (اختياري)</label>
+                    <Field
+                      name="description"
+                      as="textarea"
+                      className="input-field resize-none h-24"
+                    />
+                    <ErrorMessage name="description" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
+                  <div className="flex gap-3 pt-4">
+                    <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
+                      {editingCategory ? 'حفظ التغييرات' : 'إضافة'}
+                    </button>
+                    <button type="button" onClick={closeModal} disabled={isSubmitting} className="btn-secondary flex-1">
+                      إلغاء
+                    </button>
+                  </div>
+                </Form>
+              )}
+            </Formik>
           </div>
         </div>
       )}

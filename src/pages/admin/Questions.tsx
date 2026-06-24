@@ -6,6 +6,8 @@ import { FiPlus, FiEdit2, FiTrash2, FiUpload, FiSearch } from 'react-icons/fi'
 import Select from '../../components/ui/Select'
 import { toast } from 'react-hot-toast'
 import { useUiStore } from '../../stores/uiStore'
+import { Formik, Form, Field, ErrorMessage } from 'formik'
+import * as Yup from 'yup'
 
 interface Question {
   id: number
@@ -31,6 +33,17 @@ interface Category {
   name: string
 }
 
+const questionSchema = Yup.object().shape({
+  questionText: Yup.string().required('نص السؤال مطلوب'),
+  correctAnswer: Yup.string().required('الإجابة الصحيحة مطلوبة'),
+  option2: Yup.string().required('الخيار الثاني مطلوب'),
+  option3: Yup.string().required('الخيار الثالث مطلوب'),
+  option4: Yup.string().required('الخيار الرابع مطلوب'),
+  levelId: Yup.number().nullable(),
+  categoryId: Yup.number().nullable(),
+  questionNumber: Yup.number().min(0, 'يجب أن يكون رقماً صحيحاً').required('رقم السؤال مطلوب'),
+});
+
 export default function QuestionsPage() {
   const { theme } = useThemeStore()
   const isDark = theme === 'dark'
@@ -45,16 +58,6 @@ export default function QuestionsPage() {
   
   const [showModal, setShowModal] = useState(false)
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null)
-  const [formData, setFormData] = useState({
-    questionText: '',
-    correctAnswer: '',
-    option2: '',
-    option3: '',
-    option4: '',
-    levelId: '' as number | '',
-    categoryId: '' as number | '',
-    questionNumber: 0
-  })
 
   const { openConfirm } = useUiStore()
 
@@ -193,29 +196,8 @@ export default function QuestionsPage() {
   const openModal = (question?: Question) => {
     if (question) {
       setEditingQuestion(question)
-      setFormData({
-        questionText: question.questionText,
-        correctAnswer: question.correctAnswer,
-        option2: question.option2,
-        option3: question.option3,
-        option4: question.option4,
-        levelId: question.level?.id || '',
-        categoryId: question.categories?.[0]?.id || '',
-        questionNumber: question.questionNumber
-      })
     } else {
       setEditingQuestion(null)
-      const maxNum = Math.max(0, ...questions.map(q => q.questionNumber))
-      setFormData({
-        questionText: '',
-        correctAnswer: '',
-        option2: '',
-        option3: '',
-        option4: '',
-        levelId: '',
-        categoryId: '',
-        questionNumber: maxNum + 1
-      })
     }
     setShowModal(true)
   }
@@ -225,41 +207,12 @@ export default function QuestionsPage() {
     setEditingQuestion(null)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!formData.questionText || !formData.correctAnswer || !formData.option2) {
-      toast.error('يرجى تعبئة الحقول الإجبارية')
-      return
-    }
-
-    try {
-      const data = {
-        ...formData,
-        levelId: Number(formData.levelId) || null,
-        categoryIds: formData.categoryId ? [Number(formData.categoryId)] : []
-      }
-
-      if (editingQuestion) {
-        await questionsApi.update(editingQuestion.id, data)
-        toast.success('تم تحديث السؤال بنجاح')
-      } else {
-        await questionsApi.create(data)
-        toast.success('تم إضافة السؤال بنجاح')
-      }
-      
-      closeModal()
-      loadData()
-    } catch (error: any) {
-      console.error('Error saving question:', error)
-      toast.error(error.response?.data?.error || 'فشل حفظ السؤال')
-    }
-  }
-
   const filteredQuestions = questions.filter(q =>
     q.questionText.includes(searchQuery) ||
     q.correctAnswer.includes(searchQuery)
   )
+
+  const maxNum = Math.max(0, ...questions.map(q => q.questionNumber))
 
   return (
     <div className="h-full flex flex-col animate-fade-in">
@@ -453,97 +406,134 @@ export default function QuestionsPage() {
             <h2 className="text-xl font-bold text-theme-main mb-6">
               {editingQuestion ? 'تعديل السؤال' : 'سؤال جديد'}
             </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Select
-                  options={levels}
-                  value={formData.levelId}
-                  onChange={(val: string | number) => setFormData({ ...formData, levelId: Number(val) })}
-                  placeholder="المستوى"
-                  label="مستوى السؤال"
-                />
-                <Select
-                  options={categories}
-                  value={formData.categoryId}
-                  onChange={(val: string | number) => setFormData({ ...formData, categoryId: Number(val) })}
-                  placeholder="التصنيف"
-                  label="تصنيف السؤال"
-                />
-              </div>
+            <Formik
+              initialValues={{
+                questionText: editingQuestion?.questionText || '',
+                correctAnswer: editingQuestion?.correctAnswer || '',
+                option2: editingQuestion?.option2 || '',
+                option3: editingQuestion?.option3 || '',
+                option4: editingQuestion?.option4 || '',
+                levelId: editingQuestion?.level?.id || '',
+                categoryId: editingQuestion?.categories?.[0]?.id || '',
+                questionNumber: editingQuestion?.questionNumber || maxNum + 1
+              }}
+              validationSchema={questionSchema}
+              enableReinitialize
+              onSubmit={async (values, { setSubmitting }) => {
+                try {
+                  const data = {
+                    ...values,
+                    levelId: Number(values.levelId) || null,
+                    categoryIds: values.categoryId ? [Number(values.categoryId)] : []
+                  }
+            
+                  if (editingQuestion) {
+                    await questionsApi.update(editingQuestion.id, data)
+                    toast.success('تم تحديث السؤال بنجاح')
+                  } else {
+                    await questionsApi.create(data)
+                    toast.success('تم إضافة السؤال بنجاح')
+                  }
+                  
+                  closeModal()
+                  loadData()
+                } catch (error: any) {
+                  console.error('Error saving question:', error)
+                  toast.error(error.response?.data?.error || 'فشل حفظ السؤال')
+                } finally {
+                  setSubmitting(false)
+                }
+              }}
+            >
+              {({ isSubmitting, setFieldValue, values }) => (
+                <Form className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Select
+                      options={levels}
+                      value={values.levelId}
+                      onChange={(val: string | number) => setFieldValue('levelId', val)}
+                      placeholder="المستوى"
+                      label="مستوى السؤال"
+                    />
+                    <Select
+                      options={categories}
+                      value={values.categoryId}
+                      onChange={(val: string | number) => setFieldValue('categoryId', val)}
+                      placeholder="التصنيف"
+                      label="تصنيف السؤال"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-theme-muted text-sm mb-2">رقم السؤال</label>
-                <input
-                  type="number"
-                  value={formData.questionNumber}
-                  onChange={(e) => setFormData({ ...formData, questionNumber: Number(e.target.value) })}
-                  className="input-field"
-                  required
-                />
-              </div>
+                  <div>
+                    <label className="block text-theme-muted text-sm mb-2">رقم السؤال</label>
+                    <Field
+                      name="questionNumber"
+                      type="number"
+                      className="input-field"
+                    />
+                    <ErrorMessage name="questionNumber" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
 
-              <div>
-                <label className="block text-theme-muted text-sm mb-2">نص السؤال</label>
-                <textarea
-                  value={formData.questionText}
-                  onChange={(e) => setFormData({ ...formData, questionText: e.target.value })}
-                  className="input-field resize-none h-24"
-                  required
-                />
-              </div>
+                  <div>
+                    <label className="block text-theme-muted text-sm mb-2">نص السؤال</label>
+                    <Field
+                      name="questionText"
+                      as="textarea"
+                      className="input-field resize-none h-24"
+                    />
+                    <ErrorMessage name="questionText" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-green-500 text-sm mb-2">الإجابة الصحيحة</label>
-                  <input
-                    type="text"
-                    value={formData.correctAnswer}
-                    onChange={(e) => setFormData({ ...formData, correctAnswer: e.target.value })}
-                    className="input-field border-green-500/50 focus:border-green-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-theme-muted text-sm mb-2">الخيار الثاني</label>
-                  <input
-                    type="text"
-                    value={formData.option2}
-                    onChange={(e) => setFormData({ ...formData, option2: e.target.value })}
-                    className="input-field"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-theme-muted text-sm mb-2">الخيار الثالث</label>
-                  <input
-                    type="text"
-                    value={formData.option3}
-                    onChange={(e) => setFormData({ ...formData, option3: e.target.value })}
-                    className="input-field"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-theme-muted text-sm mb-2">الخيار الرابع</label>
-                  <input
-                    type="text"
-                    value={formData.option4}
-                    onChange={(e) => setFormData({ ...formData, option4: e.target.value })}
-                    className="input-field"
-                    required
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-green-500 text-sm mb-2">الإجابة الصحيحة</label>
+                      <Field
+                        name="correctAnswer"
+                        type="text"
+                        className="input-field border-green-500/50 focus:border-green-500"
+                      />
+                      <ErrorMessage name="correctAnswer" component="div" className="text-red-500 text-sm mt-1" />
+                    </div>
+                    <div>
+                      <label className="block text-theme-muted text-sm mb-2">الخيار الثاني</label>
+                      <Field
+                        name="option2"
+                        type="text"
+                        className="input-field"
+                      />
+                      <ErrorMessage name="option2" component="div" className="text-red-500 text-sm mt-1" />
+                    </div>
+                    <div>
+                      <label className="block text-theme-muted text-sm mb-2">الخيار الثالث</label>
+                      <Field
+                        name="option3"
+                        type="text"
+                        className="input-field"
+                      />
+                      <ErrorMessage name="option3" component="div" className="text-red-500 text-sm mt-1" />
+                    </div>
+                    <div>
+                      <label className="block text-theme-muted text-sm mb-2">الخيار الرابع</label>
+                      <Field
+                        name="option4"
+                        type="text"
+                        className="input-field"
+                      />
+                      <ErrorMessage name="option4" component="div" className="text-red-500 text-sm mt-1" />
+                    </div>
+                  </div>
 
-              <div className={`flex gap-3 pt-6 border-t mt-6 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-                <button type="submit" className="btn-primary flex-1">
-                  {editingQuestion ? 'حفظ التغييرات' : 'إضافة السؤال'}
-                </button>
-                <button type="button" onClick={closeModal} className="btn-secondary flex-1">
-                  إلغاء
-                </button>
-              </div>
-            </form>
+                  <div className={`flex gap-3 pt-6 border-t mt-6 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
+                      {editingQuestion ? 'حفظ التغييرات' : 'إضافة السؤال'}
+                    </button>
+                    <button type="button" disabled={isSubmitting} onClick={closeModal} className="btn-secondary flex-1">
+                      إلغاء
+                    </button>
+                  </div>
+                </Form>
+              )}
+            </Formik>
           </div>
         </div>
       )}
